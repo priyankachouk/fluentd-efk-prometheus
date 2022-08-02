@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: testapp1-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: testapp1
+  template:
+    metadata:
+      labels:
+        app: testapp1
+    spec:
+      containers:
+      - name: nginx
+        image: priyankachouk/node-web-app
+        ports:
+        - containerPort: 8080
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: nodeapp-service
+spec:
+  selector:
+    app: testapp1
+  ports:
+    - protocol: TCP
+      port: 8080
+      targetPort: 8080
+---

@@ -1,0 +1,159 @@
+
+#@include file-fluent.conf
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fluentd-config
+  namespace: default
+data:
+  fluent.conf: |-
+    ################################################################
+    # This source gets all logs from local docker host
+    # @include pods-kind-fluent.conf
+    @include pods-fluent.conf
+    #@include file-fluent.conf
+    #@include s3-fluent.conf
+    #@include prometheus-fluentd.conf
+    @include elastic-fluent.conf
+  pods-kind-fluent.conf: |-
+    <source>
+      @type tail
+      read_from_head true
+      tag kubernetes.*
+      path /var/log/containers/*.log
+      pos_file /var/log/fluentd-containers.log.pos
+      exclude_path ["/var/log/containers/fluent*"]
+    </source>
+
+
+  prometheus-fluentd.conf: |-
+        # count the number of incoming records per tag
+        <filter **>
+          @type prometheus
+          <metric>
+            name fluentd_input_status_num_records_total
+            type counter
+            desc The total number of incoming records
+            <labels>
+              tag fluentd-logs
+              hostname prometheus
+            </labels>
+          </metric>
+        </filter>               
+
+        # count the number of outgoing records per tag
+        <match **>
+          @type copy
+
+          <store>
+            @type forward
+            <server>
+              name prometheus_host
+              host 3.83.16.50
+              port 9090
+              weight 60
+            </server>
+          </store>
+
+          <store>
+            @type prometheus
+            <metric>
+              name fluentd_output_status_num_records_total
+              type counter
+              desc The total number of outgoing records
+              <labels>
+                tag fluentd-logs
+                hostname prometheus
+              </labels>
+            </metric>
+          </store>
+
+        </match>
+
+        # expose metrics in prometheus format
+
+        <source>
+          @type prometheus
+          bind 0.0.0.0
+          port 24231
+          metrics_path /metrics
+        </source>
+
+        <source>
+          @type prometheus_output_monitor
+          interval 10
+          <labels>
+            hostname prometheus
+          </labels>
+        </source>
+
+  s3-fluent.conf: |-
+    <match **>
+      @type s3
+
+      aws_key_id access_key
+      aws_sec_key secret_key
+      s3_bucket bucket_name
+      s3_region us-east-1
+      path logs/
+      # if you want to use ${tag} or %Y/%m/%d/ like syntax in path / s3_object_key_format,
+      # need to specify tag for ${tag} and time for %Y/%m/%d in <buffer> argument.
+      <buffer tag,time>
+        @type file
+        path /var/log/fluent/s3
+        timekey 3600 # 1 hour partition
+        timekey_wait 10m
+        timekey_use_utc true # use utc
+        chunk_limit_size 256m
+      </buffer>
+    </match>
+  pods-fluent.conf: |-
+    <source>
+      @type tail
+      read_from_head true
+      tag kubernetes.*
+      path /var/log/containers/*.log
+      pos_file /var/log/fluentd-containers.log.pos
+      exclude_path ["/var/log/containers/fluent*"]
+      <parse>
+        @type kubernetes
+        @type "#{ENV['FLUENT_CONTAINER_TAIL_PARSER_TYPE'] || 'json'}"
+        time_format %Y-%m-%dT%H:%M:%S.%NZ
+      </parse>
+    </source>
+
+    <filter kubernetes.**>
+      @type kubernetes_metadata
+      @id filter_kube_metadata
+      kubernetes_url "#{ENV['FLUENT_FILTER_KUBERNETES_URL'] || 'https://' + ENV.fetch('KUBERNETES_SERVICE_HOST') + ':' + ENV.fetch('KUBERNETES_SERVICE_PORT') + '/api'}"
+      verify_ssl "#{ENV['KUBERNETES_VERIFY_SSL'] || true}"
+      ca_file "#{ENV['KUBERNETES_CA_FILE']}"
+      skip_labels "#{ENV['FLUENT_KUBERNETES_METADATA_SKIP_LABELS'] || 'false'}"
+      skip_container_metadata "#{ENV['FLUENT_KUBERNETES_METADATA_SKIP_CONTAINER_METADATA'] || 'false'}"
+      skip_master_url "#{ENV['FLUENT_KUBERNETES_METADATA_SKIP_MASTER_URL'] || 'false'}"
+      skip_namespace_metadata "#{ENV['FLUENT_KUBERNETES_METADATA_SKIP_NAMESPACE_METADATA'] || 'false'}"
+    </filter>
+  file-fluent.conf: |-
+    <match **>
+      @type file
+      path /tmp/file-test.log
+    </match>
+  elastic-fluent.conf: |-
+    <match **>
+      @type elasticsearch
+      host "elasticsearch"
+      port "9200"
+      index_name fluentd-k8s
+      type_name fluentd
+      flush_mode interval
+      retry_type exponential_backoff
+      flush_thread_count 2
+      flush_interval 10s
+      retry_forever
+      retry_max_interval 30
+      chunk_limit_size 2M
+      queue_limit_length 8
+      overflow_action block
+     
+    </match>
