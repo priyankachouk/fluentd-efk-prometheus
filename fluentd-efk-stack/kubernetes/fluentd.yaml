@@ -25,9 +25,9 @@ spec:
       containers:
       - name: fluentd
         imagePullPolicy: "Always"
-        image: fluent/fluentd-kubernetes-daemonset:v1-debian-elasticsearch
+        #image: fluent/fluentd-kubernetes-daemonset:v1-debian-elasticsearch
         #image: fluent/fluentd-kubernetes-daemonset:v1.14-debian-s3-amd64-1
-        #image: priyankachouk/fluentd-custom
+        image: priyankachouk/fluentd-custom
         env:
           - name:  FLUENT_ELASTICSEARCH_HOST
             value: "elasticsearch"

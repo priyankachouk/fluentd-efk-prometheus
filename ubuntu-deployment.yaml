@@ -16,4 +16,4 @@ spec:
     spec:
       containers:
       - name: ubuntu-poc-demo
-        image: priyankachouk/ubuntu-new1:latest
+        image: priyankachouk/fluentd-ubuntu:latest

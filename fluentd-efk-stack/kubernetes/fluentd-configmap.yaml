@@ -14,8 +14,8 @@ data:
     @include pods-fluent.conf
     #@include file-fluent.conf
     #@include s3-fluent.conf
-    #@include prometheus-fluentd.conf
-    @include elastic-fluent.conf
+    @include prometheus-fluentd.conf
+    #@include elastic-fluent.conf
   pods-kind-fluent.conf: |-
     <source>
       @type tail
@@ -50,7 +50,7 @@ data:
             @type forward
             <server>
               name prometheus_host
-              host 3.83.16.50
+              host 3.88.210.177
               port 9090
               weight 60
             </server>

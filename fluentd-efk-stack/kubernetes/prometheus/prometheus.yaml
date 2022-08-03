@@ -9,10 +9,13 @@ data:
     scrape_configs:
     - job_name: "prometheus"
       static_configs:
-      - targets: ["3.83.16.50:30909"]
+      - targets: ["3.88.210.177:30909"]
     - job_name: 'fluentd'
       static_configs:
-      - targets: ['3.83.16.50:30889']
+        - targets: ['3.88.210.177:32230']
+    - job_name: 'Kibana'
+      static_configs:
+        - targets: ['3.88.210.177:31569']
 
 kind: ConfigMap
 metadata:
